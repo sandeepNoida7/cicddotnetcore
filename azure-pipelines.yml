@@ -2,20 +2,26 @@ trigger:
 - master
 
 pool:
-  name: 'sandeep'
+  name: 'sandeep'   # your self-hosted agent pool
 
 variables:
-  solution: '**/*.sln'
+  solution: 'src/WebApp/WebApp.sln'    # 👈 update this if your .sln is elsewhere
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
 
 steps:
+# Checkout source code
+- checkout: self
+
+# Install NuGet
 - task: NuGetToolInstaller@1
 
+# Restore NuGet packages
 - task: NuGetCommand@2
   inputs:
     restoreSolution: '$(solution)'
 
+# Build the solution
 - task: VSBuild@1
   inputs:
     solution: '$(solution)'
@@ -23,15 +29,24 @@ steps:
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
 
+# Run unit tests
 - task: VSTest@2
   inputs:
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
 
+# Publish the artifact (WebApp.zip)
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(build.artifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
+
+# Deploy to Azure Web App
 - task: AzureWebApp@1
   inputs:
-    azureSubscription: 'Azure subscription 1(f823c456-be00-4f70-b511-e414d8f34e46)'
+    azureSubscription: 'Azure subscription 1(f823c456-be00-4f70-b511-e414d8f34e46)'  # service connection name
     appType: 'webApp'
-    appName: 'cicdapp'
-    package: '$(System.DefaultWorkingDirectory)/**/*.zip'
+    appName: 'cicdapp'   # must be globally unique in Azure
+    package: '$(Build.ArtifactStagingDirectory)/WebApp.zip'
     deploymentMethod: 'auto'
