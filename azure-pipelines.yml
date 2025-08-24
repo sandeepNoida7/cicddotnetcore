@@ -2,51 +2,48 @@ trigger:
 - master
 
 pool:
-  name: 'sandeep'   # your self-hosted agent pool
+  name: 'sandeep'   # self-hosted agent
 
 variables:
-  solution: 'src/WebApp/WebApp.sln'    # 👈 update this if your .sln is elsewhere
-  buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
 
 steps:
-# Checkout source code
+# 1. Checkout code
 - checkout: self
 
-# Install NuGet
-- task: NuGetToolInstaller@1
-
-# Restore NuGet packages
-- task: NuGetCommand@2
+# 2. Restore dependencies
+- task: DotNetCoreCLI@2
   inputs:
-    restoreSolution: '$(solution)'
+    command: 'restore'
+    projects: '**/*.csproj'
 
-# Build the solution
-- task: VSBuild@1
+# 3. Build the Web API project
+- task: DotNetCoreCLI@2
   inputs:
-    solution: '$(solution)'
-    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:DesktopBuildPackageLocation="$(build.artifactStagingDirectory)\WebApp.zip" /p:DeployIisAppPath="Default Web Site"'
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
+    command: 'build'
+    projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration)'
 
-# Run unit tests
-- task: VSTest@2
+# 4. Run unit tests
+- task: DotNetCoreCLI@2
   inputs:
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
+    command: 'test'
+    projects: '**/*Tests/*.csproj'   # adjust if your test project has a different folder/name
+    arguments: '--configuration $(buildConfiguration) --no-build'
 
-# Publish the artifact (WebApp.zip)
-- task: PublishBuildArtifacts@1
+# 5. Publish Web API project
+- task: DotNetCoreCLI@2
   inputs:
-    PathtoPublish: '$(build.artifactStagingDirectory)'
-    ArtifactName: 'drop'
-    publishLocation: 'Container'
+    command: 'publish'
+    publishWebProjects: true
+    arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+    zipAfterPublish: true
 
-# Deploy to Azure Web App
+# 6. Deploy to Azure Web App
 - task: AzureWebApp@1
   inputs:
-    azureSubscription: 'Azure subscription 1(f823c456-be00-4f70-b511-e414d8f34e46)'  # service connection name
+    azureSubscription: 'Azure subscription 1(f823c456-be00-4f70-b511-e414d8f34e46)'
     appType: 'webApp'
-    appName: 'cicdapp'   # must be globally unique in Azure
-    package: '$(Build.ArtifactStagingDirectory)/WebApp.zip'
+    appName: 'cicdapp'
+    package: '$(Build.ArtifactStagingDirectory)/**/*.zip'
     deploymentMethod: 'auto'
