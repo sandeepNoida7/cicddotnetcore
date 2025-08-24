@@ -15,5 +15,11 @@ namespace MyWebApi.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Product>>> Get() =>
             await _context.Products.ToListAsync();
+
+        [HttpGet("test")]
+        public IActionResult data()
+        {
+            return Ok("test");
+        }
     }
 }
