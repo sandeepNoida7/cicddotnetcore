@@ -3,29 +3,33 @@ using MyWebApi.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
+// Add services to the container
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// ✅ Register DbContext with SQL Server
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// ✅ Enable Swagger always (Dev + Prod)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
+    c.RoutePrefix = string.Empty; // serve Swagger at root "/"
+});
 
+// Middlewares
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
 
+// ✅ Map controllers
 app.MapControllers();
+
+// ✅ Optional: Redirect root "/" → Swagger (if RoutePrefix is not empty)
+// app.MapGet("/", () => Results.Redirect("/swagger"));
 
 app.Run();
